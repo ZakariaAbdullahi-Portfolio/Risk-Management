@@ -36,3 +36,32 @@ INDICES_DB = {
         '000001.SS': 'Shanghai Composite'
     }
 }
+
+
+STOCKS_DB = {
+    'MAGNIFICENT 7 (TECH)': {
+        'NVDA': 'NVIDIA Corp',
+        'AAPL': 'Apple Inc',
+        'MSFT': 'Microsoft Corp',
+        'GOOGL': 'Alphabet (Google)',
+        'AMZN': 'Amazon.com',
+        'TSLA': 'Tesla Inc',
+        'META': 'Meta Platforms'
+    },
+    'NORDIC GIANTS': {
+        'VOLV-B.ST': 'Volvo Group',
+        'ERIC-B.ST': 'Ericsson',
+        'AZN.ST': 'AstraZeneca',
+        'HM-B.ST': 'Hennes & Mauritz',
+        'INVE-B.ST': 'Investor AB',
+        'EQNR.OL': 'Equinor (Norway)',
+        'NOVO-B.CO': 'Novo Nordisk (Denmark)'
+    },
+    'FINANCE & BANKING': {
+        'JPM': 'JPMorgan Chase',
+        'V': 'Visa Inc',
+        'MA': 'Mastercard',
+        'BAC': 'Bank of America',
+        'SEB-A.ST': 'SEB Bank'
+    }
+}
