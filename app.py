@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from scipy.stats import norm, t
+from scipy.stats import t
 import matplotlib.pyplot as plt
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # CONFIGURATION & PAGE SETUP
-st.set_page_config(page_title="Quantitative Risk Engine v4.4.1", layout="wide")
+st.set_page_config(page_title="Quantitative Risk Engine v4.5", layout="wide")
 
 # Custom CSS for Analytic Theme
 st.markdown("""
@@ -21,7 +21,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# SECTION 1: MACRO EVENT DATABASE (2026 Projections)
+# SECTION 1: MACRO EVENT DATABASE (2026)
 MACRO_EVENTS = [
     {"date": "2026-01-14", "label": "US CPI (Inflation Data)"},
     {"date": "2026-01-28", "label": "FOMC Interest Rate Decision"},
@@ -59,32 +59,30 @@ class MathEngine:
     def calculate_kelly(prob, win_loss_ratio=1.5):
         q = 1 - prob
         k = (prob * win_loss_ratio - q) / win_loss_ratio
-        return max(0, k * 0.25)
+        return max(0, k * 0.25) # Fractional Kelly (25% av full storlek)
 
     @staticmethod
     def black_scholes_tail_adjusted(S, r, sigma, days, ticker):
         T = days / 365
         if T <= 0 or sigma <= 0: return 0.0
-        target_move = 1.020 if (ticker.startswith("^") or ticker in ["SPUS"]) else 1.045
+        # SAKLIG KALIBRERING: 1.5% för index, 3.0% för enskilda aktier
+        target_move = 1.015 if (ticker.startswith("^") or ticker in ["SPUS"]) else 1.030
         K = S * target_move 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-        return t.cdf(d1, df=5) 
+        return t.cdf(d1, df=5) # Student's t-distribution för Fat-Tails
 
 class IndicatorBuilder:
     @staticmethod
     def calculate_volatility_regime(prices):
         returns = np.log(prices / prices.shift(1))
-        # Kombinerar 30-dagars och 10-dagars vol för att fånga regimskiften
-        hist_vol = returns.rolling(window=30).std() * np.sqrt(252)
-        short_vol = returns.rolling(window=10).std() * np.sqrt(252)
-        return (hist_vol + short_vol) / 2
+        vol = returns.rolling(window=20).std() * np.sqrt(252)
+        return vol
 
 # SECTION 4: MACRO LOGIC
 def check_macro_proximity():
     today = datetime.now()
     active_events = []
     for event in MACRO_EVENTS:
-        # KORRIGERAT DATUMFORMAT: %m och %d istället för %MM %DD
         event_date = datetime.strptime(event['date'], "%Y-%m-%d")
         diff = (event_date - today).days
         if 0 <= diff <= 2: 
@@ -112,31 +110,34 @@ def run_analysis(ticker):
         prob = MathEngine.black_scholes_tail_adjusted(current_price, 0.045, current_vol, 30, ticker)
         kelly_suggestion = MathEngine.calculate_kelly(prob)
 
+        # Output Metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Price", f"${current_price:.2f}")
         m2.metric("Probability", f"{prob*100:.1f}%")
         m3.metric("Regime Vol.", f"{current_vol*100:.1f}%")
         m4.metric("Kelly Allocation", f"{kelly_suggestion*100:.1f}%")
 
+        # Visualization
         fig, ax = plt.subplots(figsize=(12, 4))
-        ax.plot(df.index, prices, color='#58a6ff', label='Price')
-        ax.plot(df.index, prices.rolling(200).mean(), color='orange', linestyle='--', label='200-SMA')
+        ax.plot(df.index, prices, color='#58a6ff', label='Price', linewidth=1.5)
+        ax.plot(df.index, prices.rolling(200).mean(), color='orange', linestyle='--', label='200-day SMA')
         ax.set_facecolor('#0e1117')
         fig.patch.set_facecolor('#0e1117')
         ax.tick_params(colors='white')
         ax.legend()
         st.pyplot(fig)
 
+        # QUANTITATIVE VERDICT LOGIC
         st.subheader("QUANTITATIVE VERDICT")
         is_uptrend = current_price > sma_200
         
         if macro_risks:
             st.warning("**CAUTION: Macro-Event Suppression Active.**")
             st.write("*The model identifies upcoming systematic risk. Statistical edge is secondary to potential event-driven volatility shocks. Capital preservation is prioritized.*")
-        elif prob > 0.55 and is_uptrend:
+        elif prob >= 0.50 and is_uptrend:
             st.success("**CONVERGENCE: Statistical edge is confirmed.**")
-            st.write("*The system identifies a 'High-Conviction' state. Probability density is clustered above the price target while the asset maintains positive structural momentum. Probabilistic modeling supports directional expansion.*")
-        elif prob < 0.30:
+            st.write("*The system identifies a 'High-Conviction' state. Probabilistic modeling indicates an edge above 50% while the asset maintains positive structural momentum above the 200-day SMA.*")
+        elif prob < 0.35:
             st.warning("**CAUTION: Insufficient statistical conviction.**")
             st.write("*The model identifies excessive market noise where current volatility exceeds standard predictive limits. Statistical conviction is insufficient, indicating an unfavorable risk/reward profile.*")
         else:
@@ -148,8 +149,9 @@ def run_analysis(ticker):
 
 # SECTION 6: MAIN INTERFACE
 def main():
-    st.title("📊 Quantitative Risk Engine v4.4.1")
-    
+    st.title("📊 Quantitative Risk Engine v4.5")
+    st.markdown("Advanced probabilistic analysis and risk management.")
+
     with st.container():
         st.markdown('<div class="main-control">', unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -175,10 +177,10 @@ def main():
 
     st.sidebar.subheader("SYSTEM ARCHITECTURE")
     st.sidebar.info("""
-    - **Logic:** Black-Scholes Model + Student's t-adjustment.
+    - **Logic:** Black-Scholes + Student's t-adjustment.
+    - **Target:** 3.0% (Stocks) / 1.5% (Indices).
     - **Macro:** Event-Timer Proximity Override.
-    - **Volatility:** Regime-weighted realized vol.
-    - **Risk:** Fractional Kelly allocation.
+    - **Risk:** Fractional Kelly Allocation.
     """)
 
 if __name__ == "__main__":
