@@ -111,22 +111,22 @@ def run_analysis(ticker):
     is_uptrend = current_price > sma_200.iloc[-1]
     
     if prob > 0.55 and is_uptrend:
-        st.success(f"**CONVERGENCE:** Mathematical conviction ({prob*100:.1f}%) aligns with structural trend.")
+        st.success(f"**CONVERGENCE: Statistical edge is confirmed.**")
         st.write("""
         *The system identifies a 'High-Conviction' state. Probability density is clustered above the price target while 
-        the asset maintains positive structural momentum above the 200-SMA. Statistical edge is confirmed.*
+        the asset maintains positive structural momentum above the 200-day SMA. Probabilistic modeling supports directional expansion.*
         """)
     elif prob < 0.30:
-        st.warning(f"**CAUTION: Probabilistic model indicates low statistical edge.**")
+        st.warning(f"**CAUTION: Insufficient statistical conviction.**")
         st.write("""
-        *The model identifies high market 'noise' or a price target that exceeds current volatility limits. 
-        Statistical conviction is low, suggesting that the current risk/reward profile is unfavorable.*
+        *The model identifies excessive market noise where current volatility exceeds standard predictive limits. 
+        Statistical conviction is insufficient, indicating that the current risk/reward profile is unfavorable for capital allocation.*
         """)
     else:
-        st.info("**NEUTRAL: Wait for trend confirmation or volatility contraction.**")
+        st.info("**NEUTRAL: Market indecision or mean reversion phase.**")
         st.write("""
-        *The asset is in a 'Mean Reversion' or 'Indecision' phase. While math shows moderate probability, 
-        lack of structural trend or fluctuating volatility suggests waiting for a cleaner breakout signal.*
+        *The asset is in a 'Mean Reversion' or 'Indecision' phase. While probabilistic modeling indicates moderate potential, 
+        the lack of a confirmed structural trend or stabilizing volatility suggests waiting for a cleaner breakout signal to establish a high-conviction edge.*
         """)
 
 # SECTION 5: MAIN INTERFACE
