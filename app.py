@@ -167,20 +167,6 @@ def main():
     st.sidebar.markdown("---")
     mode = st.sidebar.radio("Select Data Source:", ["TOP 100 STOCKS", "GLOBAL INDICES", "MANUAL SEARCH"])
     
-    # SYSTEM ARCHITECTURE SECTION
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("SYSTEM ARCHITECTURE")
-    st.sidebar.info("""
-        **Quantitative Risk Engine v4.0**
-        
-        Utilizing the **Black-Scholes Model** to calculate the statistical probability of price targets within a 30-day horizon.
-        
-        **Key Features:**
-        - **Dynamic Asset Calibration:** Adjusts volatility thresholds for Indices vs. Equities.
-        - **Structural Filtering:** Integrates 200-day SMA logic to ensure mathematical signals align with market structure.
-        - **Volatility Regime Analysis:** Identifies when market 'noise' invalidates standard predictive models.
-    """)
-    
     selected_ticker = None
 
     if mode == "TOP 100 STOCKS":
@@ -202,9 +188,25 @@ def main():
         if user_input:
             selected_ticker = user_input
 
+    # INITIATE BUTTON (Flyttad hit upp för bättre flöde)
+    st.sidebar.markdown(" ")
     if st.sidebar.button("INITIATE ANALYSIS", type="primary"):
         if selected_ticker:
             run_analysis(selected_ticker)
+
+    # SYSTEM ARCHITECTURE SECTION (Längst ner i sidofältet)
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("SYSTEM ARCHITECTURE")
+    st.sidebar.info("""
+        **Quantitative Risk Engine v4.0**
+        
+        Utilizing the **Black-Scholes Model** to calculate the statistical probability of price targets within a 30-day horizon.
+        
+        **Key Features:**
+        - **Dynamic Asset Calibration:** Adjusts volatility thresholds for Indices vs. Equities.
+        - **Structural Filtering:** Integrates 200-day SMA logic to ensure mathematical signals align with market structure.
+        - **Volatility Regime Analysis:** Identifies when market 'noise' invalidates standard predictive models.
+    """)
 
 if __name__ == "__main__":
     main()
