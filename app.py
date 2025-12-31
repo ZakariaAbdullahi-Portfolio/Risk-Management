@@ -19,7 +19,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# SECTION 1: MASTER ASSET DATABASE (Uppdaterad enligt önskemål)
+# SECTION 1: MASTER ASSET DATABASE
 INDICES_DB = {
     "US MARKETS": {
         "S&P 500": "^GSPC",
@@ -89,12 +89,12 @@ def run_analysis(ticker):
     current_vol = float(vol_regime.iloc[-1])
     sma_200 = IndicatorBuilder.calculate_sma(prices, 200)
     
-    bs_prob = MathEngine.black_scholes_tail_adjusted(current_price, 0.045, current_vol, 30, ticker)
-    kelly_suggestion = MathEngine.calculate_kelly(bs_prob)
+    prob = MathEngine.black_scholes_tail_adjusted(current_price, 0.045, current_vol, 30, ticker)
+    kelly_suggestion = MathEngine.calculate_kelly(prob)
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Price", f"${current_price:.2f}")
-    m2.metric("Probability", f"{bs_prob*100:.1f}%")
+    m2.metric("Probability", f"{prob*100:.1f}%")
     m3.metric("Regime Vol.", f"{current_vol*100:.1f}%")
     m4.metric("Kelly Allocation", f"{kelly_suggestion*100:.1f}%")
 
@@ -108,9 +108,9 @@ def run_analysis(ticker):
     st.pyplot(fig)
 
     is_uptrend = current_price > sma_200.iloc[-1]
-    if bs_prob > 0.55 and is_uptrend:
-        st.success(f"**CONVERGENCE:** Mathematical conviction ({bs_prob*100:.1f}%) aligns with structural trend.")
-    elif bs_prob < 0.40:
+    if prob > 0.55 and is_uptrend:
+        st.success(f"**CONVERGENCE:** Mathematical conviction ({prob*100:.1f}%) aligns with structural trend.")
+    elif prob < 0.40:
         st.warning(f"**CAUTION:** Probabilistic model indicates low statistical edge.")
     else:
         st.info("**NEUTRAL:** Wait for trend confirmation or volatility contraction.")
@@ -151,7 +151,7 @@ def main():
 
     st.sidebar.subheader("SYSTEM ARCHITECTURE")
     st.sidebar.info("""
-    - **Logic:** BS-Model + Student's t-adjustment.
+    - **Logic:** Black-Scholes Model + Student's t-adjustment.
     - **Volatility:** Regime-weighted realized vol.
     - **Risk:** Fractional Kelly allocation.
     - **Structure:** 200-day SMA trend filtering.
