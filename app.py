@@ -132,7 +132,7 @@ def run_analysis(ticker):
     ax.legend()
     st.pyplot(fig)
 
-    # QUANTITATIVE VERDICT
+    # QUANTITATIVE VERDICT.
     st.subheader("QUANTITATIVE VERDICT")
     
     is_uptrend = current_price > sma_200.iloc[-1]
