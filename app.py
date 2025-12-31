@@ -65,3 +65,24 @@ STOCKS_DB = {
         'SEB-A.ST': 'SEB Bank'
     }
 }
+
+# MATH ENGINE & INDICATORS
+class MathEngine:
+    @staticmethod
+    def calculate_mean(data):
+        return sum(data) / len(data) if len(data) > 0 else 0
+
+    @staticmethod
+    def calculate_std_dev(data):
+        if len(data) < 2: return 0
+        mean = MathEngine.calculate_mean(data)
+        variance = sum((x - mean) ** 2 for x in data) / (len(data) - 1)
+        return math.sqrt(variance)
+
+    @staticmethod
+    def black_scholes_probability(S, r, sigma, t):
+        # S=Price, r=Risk-free rate, sigma=Volatility, t=Time
+        if t <= 0 or sigma == 0: return 0.0
+        K = S * (1 + (r * t)) 
+        d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
+        return norm.cdf(d1)
