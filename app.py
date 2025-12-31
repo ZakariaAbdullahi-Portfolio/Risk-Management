@@ -21,9 +21,21 @@ st.markdown("""
 
 # SECTION 1: MASTER ASSET DATABASE
 INDICES_DB = {
-    "US MARKETS": {"^GSPC": "S&P 500", "^IXIC": "NASDAQ 100", "^DJI": "Dow Jones", "^RUT": "Russell 2000"},
-    "SHARIA COMPLIANT": {"SPUS": "S&P 500 Sharia", "HLAL": "Wahed Sharia"},
-    "GLOBAL": {"^STOXX50E": "Euro Stoxx 50", "^OMX": "OMX Stockholm 30", "^N225": "Nikkei 225"}
+    "US MARKETS": {
+        "S&P 500": "^GSPC",
+        "NASDAQ 100": "^IXIC",
+        "Dow Jones": "^DJI",
+        "Russell 2000": "^RUT"
+    },
+    "SHARIA COMPLIANT": {
+        "S&P 500 Sharia": "SPUS",
+        "Wahed Sharia": "HLAL"
+    },
+    "GLOBAL": {
+        "Euro Stoxx 50": "^STOXX50E",
+        "OMX Stockholm 30": "^OMX",
+        "Nikkei 225": "^N225"
+    }
 }
 
 STOCKS_DB = {
@@ -61,13 +73,6 @@ class IndicatorBuilder:
 
     @staticmethod
     def calculate_sma(prices, period): return prices.rolling(window=period).mean()
-    
-    @staticmethod
-    def calculate_rsi(prices, period=14):
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        return 100 - (100 / (1 + gain/loss))
 
 # SECTION 4: ANALYSIS EXECUTION
 def run_analysis(ticker):
@@ -113,12 +118,11 @@ def run_analysis(ticker):
     else:
         st.info("**NEUTRAL:** Wait for trend confirmation or volatility contraction.")
 
-# SECTION 5: MAIN INTERFACE (Relocated to Main Page)
+# SECTION 5: MAIN INTERFACE
 def main():
-    st.title("📊 Quantitative Risk Engine v4.2")
+    st.title("📊 Quantitative Risk Engine")
     st.markdown("Select an asset to initiate advanced probabilistic analysis.")
 
-    # Main Control Panel
     with st.container():
         st.markdown('<div class="main-control">', unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -134,13 +138,14 @@ def main():
                 selected_ticker = st.selectbox("Asset:", STOCKS_DB[cat])
             elif mode == "INDICES":
                 cat = st.selectbox("Market:", list(INDICES_DB.keys()))
-                choice = st.selectbox("Index:", list(INDICES_DB[cat].keys()))
-                selected_ticker = choice
+                # Här visas namnet, men vi hämtar symbolen bakom kulisserna
+                index_name = st.selectbox("Index:", list(INDICES_DB[cat].keys()))
+                selected_ticker = INDICES_DB[cat][index_name]
             else:
                 selected_ticker = st.text_input("Enter Ticker (e.g., TSLA):").upper()
 
         with col3:
-            st.markdown("<br>", unsafe_allow_html=True) # Spacer
+            st.markdown("<br>", unsafe_allow_html=True)
             run_btn = st.button("INITIATE ANALYSIS", type="primary")
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -148,7 +153,6 @@ def main():
     if run_btn and selected_ticker:
         run_analysis(selected_ticker)
 
-    # Sidebar remains for documentation only
     st.sidebar.subheader("SYSTEM ARCHITECTURE")
     st.sidebar.info("""
     - **Logic:** BS-Model + Student's t-adjustment.
