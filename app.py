@@ -19,17 +19,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# SECTION 1: MASTER ASSET DATABASE
+# SECTION 1: MASTER ASSET DATABASE (Uppdaterad enligt önskemål)
 INDICES_DB = {
     "US MARKETS": {
         "S&P 500": "^GSPC",
+        "S&P 500 Sharia": "SPUS",
         "NASDAQ 100": "^IXIC",
         "Dow Jones": "^DJI",
         "Russell 2000": "^RUT"
-    },
-    "SHARIA COMPLIANT": {
-        "S&P 500 Sharia": "SPUS",
-        "Wahed Sharia": "HLAL"
     },
     "GLOBAL": {
         "Euro Stoxx 50": "^STOXX50E",
@@ -137,8 +134,7 @@ def main():
                 cat = st.selectbox("Sector:", list(STOCKS_DB.keys()))
                 selected_ticker = st.selectbox("Asset:", STOCKS_DB[cat])
             elif mode == "INDICES":
-                cat = st.selectbox("Market:", list(INDICES_DB.keys()))
-                # Här visas namnet, men vi hämtar symbolen bakom kulisserna
+                cat = st.selectbox("Market:", list(INDICES_DB.items()))
                 index_name = st.selectbox("Index:", list(INDICES_DB[cat].keys()))
                 selected_ticker = INDICES_DB[cat][index_name]
             else:
