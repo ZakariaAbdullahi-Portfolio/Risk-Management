@@ -134,9 +134,9 @@ def main():
                 cat = st.selectbox("Sector:", list(STOCKS_DB.keys()))
                 selected_ticker = st.selectbox("Asset:", STOCKS_DB[cat])
             elif mode == "INDICES":
-                cat = st.selectbox("Market:", list(INDICES_DB.items()))
-                index_name = st.selectbox("Index:", list(INDICES_DB[cat].keys()))
-                selected_ticker = INDICES_DB[cat][index_name]
+                cat_indices = st.selectbox("Market:", list(INDICES_DB.keys()))
+                index_name = st.selectbox("Index:", list(INDICES_DB[cat_indices].keys()))
+                selected_ticker = INDICES_DB[cat_indices][index_name]
             else:
                 selected_ticker = st.text_input("Enter Ticker (e.g., TSLA):").upper()
 
