@@ -52,10 +52,18 @@ STOCKS_DB = {
 # SECTION 2: MATH & LOGIC ENGINE
 class MathEngine:
     @staticmethod
-    def black_scholes_probability(S, r, sigma, t):
+    def black_scholes_probability(S, r, sigma, t, ticker):
         if t <= 0 or sigma == 0: return 0.0
-        # Target price is calculated as a 4.5% move from current spot
-        K = S * 1.045 
+        
+        # SAKLIG JUSTERING: Index rör sig mindre än aktier.
+        # Vi identifierar index genom prefixet '^' (Yahoo Finance standard) 
+        # eller genom dina specifika Sharia-ETF:er.
+        if ticker.startswith("^") or ticker in ["SPUS", "HLAL"]:
+            target_move = 1.020  # 2.0% mål för index (realistiskt för 30 dagar)
+        else:
+            target_move = 1.045  # 4.5% mål för enskilda aktier
+            
+        K = S * target_move 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
         return norm.cdf(d1)
 
@@ -99,8 +107,9 @@ def run_analysis(ticker):
     current_price = prices.iloc[-1]
     current_vol = volatility.iloc[-1]
     current_rsi = rsi.iloc[-1]
-    # Analysis for a 30-day window
-    bs_prob = MathEngine.black_scholes_probability(current_price, 0.045, current_vol, 30/365)
+    
+    # Skickar med ticker-namnet för att aktivera den dynamiska målberäkningen
+    bs_prob = MathEngine.black_scholes_probability(current_price, 0.045, current_vol, 30/365, ticker)
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Price", f"${current_price:.2f}")
@@ -123,6 +132,7 @@ def run_analysis(ticker):
     ax.legend()
     st.pyplot(fig)
 
+    # QUANTITATIVE VERDICT
     st.subheader("QUANTITATIVE VERDICT")
     
     is_uptrend = current_price > sma_200.iloc[-1]
@@ -142,7 +152,6 @@ def run_analysis(ticker):
     else:
         st.warning(f"**STRATEGY SIGNAL:** Caution: Mathematical probability is low on the analysis ({bs_prob*100:.1f}%).")
         
-        # DYNAMIC EXPLANATION BASED ON ACTUAL DATA
         reasons = []
         if current_vol > 0.35:
             reasons.append("Extreme Volatility: The high standard deviation in price makes the 30-day target mathematically unstable.")
