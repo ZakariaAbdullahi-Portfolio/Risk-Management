@@ -7,9 +7,9 @@ import math
 import streamlit as st
 
 # CONFIGURATION & PAGE SETUP
-st.set_page_config(page_title="Risk Management System", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Risk Management System", layout="wide")
 
-# Custom CSS for Ominous/Analytic vibe
+# Custom CSS for Analytic Theme
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: #c9d1d9; }
@@ -20,17 +20,17 @@ st.markdown("""
 
 # SECTION 1: MASTER ASSET DATABASE
 INDICES_DB = {
-    "🇺🇸 US MARKETS": {
+    "US MARKETS": {
         "^GSPC": "S&P 500 (US Large Cap)",
         "^IXIC": "NASDAQ 100 (Tech)",
         "^DJI": "Dow Jones Industrial",
         "^RUT": "Russell 2000 (Small Cap)"
     },
-    "🕌 SHARIA COMPLIANT": {
+    "SHARIA COMPLIANT": {
         "SPUS": "S&P 500 Sharia (SP Funds)",
         "HLAL": "Wahed FTSE USA Sharia"
     },
-    "🌍 GLOBAL INDICES": {
+    "GLOBAL INDICES": {
         "^STOXX50E": "Euro Stoxx 50 (Europe)",
         "^GDAXI": "DAX 40 (Germany)",
         "^FTSE": "FTSE 100 (UK)",
@@ -49,7 +49,7 @@ STOCKS_DB = {
     "ENERGY & COMMODITIES": ["XOM", "CVX", "SHEL", "BP", "RIO", "VALE"]
 }
 
-# Flatten stocks for easier searching
+# Flatten stocks for search
 ALL_STOCKS = {}
 for category, tickers in STOCKS_DB.items():
     for ticker in tickers:
@@ -82,9 +82,9 @@ class IndicatorBuilder:
         log_ret = np.log(pd.Series(prices) / pd.Series(prices).shift(1))
         return log_ret.rolling(window=window).std() * np.sqrt(252)
 
-# SECTION 3: TRADING SYSTEM (STREAMLIT ADAPTED)
+# SECTION 3: TRADING SYSTEM
 def run_analysis(ticker):
-    st.write(f"### 📡 ANALYZING ASSET: {ticker}")
+    st.write(f"### ANALYZING ASSET: {ticker}")
     
     # 1. Fetch Data
     try:
@@ -135,7 +135,7 @@ def run_analysis(ticker):
     st.pyplot(fig)
 
     # 6. Analyst Verdict
-    st.subheader("🤖 SYSTEM VERDICT")
+    st.subheader("SYSTEM VERDICT")
     if current_price > sma_200.iloc[-1]:
         trend = "BULLISH (Uptrend)"
         color = "green"
@@ -147,9 +147,9 @@ def run_analysis(ticker):
     st.markdown(f"**RSI Status:** {'Overbought' if current_rsi > 70 else 'Oversold' if current_rsi < 30 else 'Neutral'}")
     
     if bs_prob > 0.55:
-        st.success(f"**OPPORTUNITY:** High mathematical probability ({bs_prob*100:.1f}%) of upside.")
+        st.success(f"OPPORTUNITY: High mathematical probability ({bs_prob*100:.1f}%) of upside.")
     else:
-        st.warning("**CAUTION:** Mathematical probability is low. Stay Liquid.")
+        st.warning("CAUTION: Mathematical probability is low. Stay Liquid.")
 
 # MAIN APP INTERFACE
 def main():
@@ -157,17 +157,17 @@ def main():
     st.sidebar.markdown("---")
     
     # MODE SELECTION
-    mode = st.sidebar.radio("Select Data Source:", ["📈 TOP 100 STOCKS", "🌍 GLOBAL INDICES", "🔍 MANUAL SEARCH"])
+    mode = st.sidebar.radio("Select Data Source:", ["TOP 100 STOCKS", "GLOBAL INDICES", "MANUAL SEARCH"])
     
     selected_ticker = None
 
-    if mode == "📈 TOP 100 STOCKS":
+    if mode == "TOP 100 STOCKS":
         st.header("Major Equities Database")
         category = st.selectbox("Select Sector:", list(STOCKS_DB.keys()))
         ticker_key = st.selectbox("Select Asset:", STOCKS_DB[category])
         selected_ticker = ticker_key
 
-    elif mode == "🌍 GLOBAL INDICES":
+    elif mode == "GLOBAL INDICES":
         st.header("Global Market Indices")
         all_indices = {}
         for cat, data in INDICES_DB.items():
@@ -177,7 +177,7 @@ def main():
         choice = st.selectbox("Select Index:", list(all_indices.keys()))
         selected_ticker = all_indices[choice]
 
-    elif mode == "🔍 MANUAL SEARCH":
+    elif mode == "MANUAL SEARCH":
         st.header("Manual Ticker Entry")
         user_input = st.text_input("Enter Ticker (e.g., TSLA, BTC-USD, GLD):").upper()
         if user_input:
