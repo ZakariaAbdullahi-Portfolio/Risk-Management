@@ -112,14 +112,22 @@ def run_analysis(ticker):
     
     if prob > 0.55 and is_uptrend:
         st.success(f"**CONVERGENCE:** Mathematical conviction ({prob*100:.1f}%) aligns with structural trend.")
-    elif prob < 0.30: # JUSTERAD TRÖSKEL TILL 30%
+        st.write("""
+        *The system identifies a 'High-Conviction' state. Probability density is clustered above the price target while 
+        the asset maintains positive structural momentum above the 200-SMA. Statistical edge is confirmed.*
+        """)
+    elif prob < 0.30:
         st.warning(f"**CAUTION: Probabilistic model indicates low statistical edge.**")
         st.write("""
         *The model identifies high market 'noise' or a price target that exceeds current volatility limits. 
         Statistical conviction is low, suggesting that the current risk/reward profile is unfavorable.*
         """)
     else:
-        st.info("**NEUTRAL:** Wait for trend confirmation or volatility contraction.")
+        st.info("**NEUTRAL: Wait for trend confirmation or volatility contraction.**")
+        st.write("""
+        *The asset is in a 'Mean Reversion' or 'Indecision' phase. While math shows moderate probability, 
+        lack of structural trend or fluctuating volatility suggests waiting for a cleaner breakout signal.*
+        """)
 
 # SECTION 5: MAIN INTERFACE
 def main():
