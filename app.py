@@ -66,7 +66,7 @@ STOCKS_DB = {
     }
 }
 
-# MATH ENGINE & INDICATORS
+# MATH ENGINE & INDICATORS Black-Scholes Model
 class MathEngine:
     @staticmethod
     def calculate_mean(data):
