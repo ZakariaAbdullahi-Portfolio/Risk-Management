@@ -112,9 +112,8 @@ def run_analysis(ticker):
     
     if prob > 0.55 and is_uptrend:
         st.success(f"**CONVERGENCE:** Mathematical conviction ({prob*100:.1f}%) aligns with structural trend.")
-    elif prob < 0.40:
+    elif prob < 0.30: # JUSTERAD TRÖSKEL TILL 30%
         st.warning(f"**CAUTION: Probabilistic model indicates low statistical edge.**")
-        # Direkt text under den gula varningen
         st.write("""
         *The model identifies high market 'noise' or a price target that exceeds current volatility limits. 
         Statistical conviction is low, suggesting that the current risk/reward profile is unfavorable.*
