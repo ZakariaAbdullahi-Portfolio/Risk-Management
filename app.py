@@ -55,13 +55,10 @@ class MathEngine:
     def black_scholes_probability(S, r, sigma, t, ticker):
         if t <= 0 or sigma == 0: return 0.0
         
-        # SAKLIG JUSTERING: Index rör sig mindre än aktier.
-        # Vi identifierar index genom prefixet '^' (Yahoo Finance standard) 
-        # eller genom dina specifika Sharia-ETF:er.
         if ticker.startswith("^") or ticker in ["SPUS", "HLAL"]:
-            target_move = 1.020  # 2.0% mål för index (realistiskt för 30 dagar)
+            target_move = 1.020  
         else:
-            target_move = 1.045  # 4.5% mål för enskilda aktier
+            target_move = 1.045  
             
         K = S * target_move 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
@@ -108,7 +105,6 @@ def run_analysis(ticker):
     current_vol = volatility.iloc[-1]
     current_rsi = rsi.iloc[-1]
     
-    # Skickar med ticker-namnet för att aktivera den dynamiska målberäkningen
     bs_prob = MathEngine.black_scholes_probability(current_price, 0.045, current_vol, 30/365, ticker)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -132,7 +128,6 @@ def run_analysis(ticker):
     ax.legend()
     st.pyplot(fig)
 
-    # QUANTITATIVE VERDICT.
     st.subheader("QUANTITATIVE VERDICT")
     
     is_uptrend = current_price > sma_200.iloc[-1]
@@ -171,6 +166,20 @@ def main():
     st.sidebar.title("ACCESS TERMINAL")
     st.sidebar.markdown("---")
     mode = st.sidebar.radio("Select Data Source:", ["TOP 100 STOCKS", "GLOBAL INDICES", "MANUAL SEARCH"])
+    
+    # SYSTEM ARCHITECTURE SECTION
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("SYSTEM ARCHITECTURE")
+    st.sidebar.info("""
+        **Quantitative Risk Engine v4.0**
+        
+        Utilizing the **Black-Scholes Model** to calculate the statistical probability of price targets within a 30-day horizon.
+        
+        **Key Features:**
+        - **Dynamic Asset Calibration:** Adjusts volatility thresholds for Indices vs. Equities.
+        - **Structural Filtering:** Integrates 200-day SMA logic to ensure mathematical signals align with market structure.
+        - **Volatility Regime Analysis:** Identifies when market 'noise' invalidates standard predictive models.
+    """)
     
     selected_ticker = None
 
