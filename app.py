@@ -86,3 +86,21 @@ class MathEngine:
         K = S * (1 + (r * t)) 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
         return norm.cdf(d1)
+
+class IndicatorBuilder:
+    @staticmethod
+    def calculate_sma(prices, period):
+        return pd.Series(prices).rolling(window=period).mean().tolist()
+
+    @staticmethod
+    def calculate_rsi(prices, period=14):
+        delta = pd.Series(prices).diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        return (100 - (100 / (1 + rs))).tolist()
+
+    @staticmethod
+    def calculate_volatility(prices, window):
+        log_ret = np.log(pd.Series(prices) / pd.Series(prices).shift(1))
+        return (log_ret.rolling(window=window).std() * np.sqrt(252)).tolist()
