@@ -5,160 +5,156 @@ from scipy.stats import norm, t
 import matplotlib.pyplot as plt
 import streamlit as st
 
-# CONFIGURATION & GLOBAL STYLING
-st.set_page_config(page_title="Quantitative Risk Engine v4.2", layout="wide")
+# CONFIGURATION & PAGE SETUP
+st.set_page_config(page_title="Quantitative Risk Engine", layout="wide")
 
+# Custom CSS for Analytic Theme
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: #c9d1d9; }
-    .stButton>button { 
-        background-color: #238636; border: 1px solid #2ea043; color: white; 
-        width: 100%; font-weight: bold; height: 3em;
-    }
-    h1, h2, h3 { color: #58a6ff; font-family: 'Segoe UI', sans-serif; }
-    .stMetric { 
-        background-color: #161b22; padding: 20px; border-radius: 12px; border: 1px solid #30363d; 
-    }
-    .stAlert { background-color: #161b22; border: 1px solid #30363d; }
+    .stButton>button { background-color: #262730; border: 1px solid #4e535e; color: white; width: 100%; height: 3em; }
+    h1, h2, h3 { color: #58a6ff; font-family: 'Courier New', monospace; }
+    .stMetric { background-color: #161b22; padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
+    .main-control { background-color: #1c2128; padding: 20px; border-radius: 15px; border: 1px solid #444c56; margin-bottom: 25px; }
     </style>
     """, unsafe_allow_html=True)
 
-# ASSET ARCHIVE
+# SECTION 1: MASTER ASSET DATABASE
 INDICES_DB = {
-    "US MARKETS": {"^GSPC": "S&P 500 Index", "^IXIC": "NASDAQ 100", "^DJI": "Dow Jones Industrial", "^RUT": "Russell 2000"},
-    "SHARIA COMPLIANT": {"SPUS": "S&P 500 Sharia (SP Funds)"},
-    "GLOBAL MARKETS": {"^STOXX50E": "Euro Stoxx 50", "^OMX": "OMX Stockholm 30", "^N225": "Nikkei 225"}
+    "US MARKETS": {"^GSPC": "S&P 500", "^IXIC": "NASDAQ 100", "^DJI": "Dow Jones", "^RUT": "Russell 2000"},
+    "SHARIA COMPLIANT": {"SPUS": "S&P 500 Sharia", "HLAL": "Wahed Sharia"},
+    "GLOBAL": {"^STOXX50E": "Euro Stoxx 50", "^OMX": "OMX Stockholm 30", "^N225": "Nikkei 225"}
 }
 
 STOCKS_DB = {
-    "TECHNOLOGY": ["NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META"],
+    "TECH": ["NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META"],
     "NORDIC": ["VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "HM-B.ST", "INVE-B.ST"],
-    "FINANCIAL/HEALTH": ["JPM", "BAC", "GS", "LLY", "JNJ", "PFE"]
+    "FINANCE": ["JPM", "BAC", "V", "MA", "GS"],
+    "HEALTH/ENERGY": ["LLY", "JNJ", "XOM", "CVX"]
 }
 
-# QUANTITATIVE COMPUTATION ENGINE
-class RiskEngine:
+# SECTION 2: ADVANCED MATH ENGINE
+class MathEngine:
     @staticmethod
-    def get_black_scholes_probability(S, r, sigma, days, ticker):
+    def calculate_kelly(prob, win_loss_ratio=1.5):
+        q = 1 - prob
+        k = (prob * win_loss_ratio - q) / win_loss_ratio
+        return max(0, k * 0.25)
+
+    @staticmethod
+    def black_scholes_tail_adjusted(S, r, sigma, days, ticker):
         T = days / 365
         if T <= 0 or sigma <= 0: return 0.0
-        
-        is_stable = ticker.startswith("^") or ticker == "SPUS"
-        target_multiplier = 1.020 if is_stable else 1.045
-        K = S * target_multiplier
-        
+        target_move = 1.020 if (ticker.startswith("^") or ticker in ["SPUS", "HLAL"]) else 1.045
+        K = S * target_move 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-        # Student's t-distribution for Fat-Tail risk (df=5)
-        return t.cdf(d1, df=5)
+        return t.cdf(d1, df=5) 
+
+# SECTION 3: INDICATOR BUILDER
+class IndicatorBuilder:
+    @staticmethod
+    def calculate_volatility_regime(prices, window=30):
+        returns = np.log(prices / prices.shift(1))
+        hist_vol = returns.rolling(window=window).std() * np.sqrt(252)
+        short_vol = returns.rolling(window=10).std() * np.sqrt(252)
+        return (hist_vol + short_vol) / 2
 
     @staticmethod
-    def calculate_kelly_criterion(win_prob, edge_ratio=1.5):
-        loss_prob = 1 - win_prob
-        kelly_f = (win_prob * edge_ratio - loss_prob) / edge_ratio
-        return max(0, kelly_f * 0.25)
-
-# SIGNAL PROCESSING
-class SignalProcessor:
+    def calculate_sma(prices, period): return prices.rolling(window=period).mean()
+    
     @staticmethod
-    def get_regime_volatility(prices):
-        log_rets = np.log(prices / prices.shift(1))
-        return (log_rets.rolling(30).std() * np.sqrt(252) * 0.6) + (log_rets.rolling(10).std() * np.sqrt(252) * 0.4)
+    def calculate_rsi(prices, period=14):
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        return 100 - (100 / (1 + gain/loss))
 
-# ANALYSIS EXECUTION
-def execute_terminal_analysis(ticker):
-    st.subheader(f"TERMINAL ANALYSIS: {ticker}")
+# SECTION 4: ANALYSIS EXECUTION
+def run_analysis(ticker):
+    st.markdown("---")
+    st.write(f"### ANALYZING ASSET: {ticker}")
     
     try:
         df = yf.download(ticker, period="2y", progress=False, multi_level_index=False)
-        if df.empty or len(df) < 200:
-            st.error("DATABASE ERROR: Insufficient historical data."); return
+        if len(df) < 200:
+            st.error("Insufficient data."); return
     except Exception as e:
-        st.error(f"DATA FEED ERROR: {str(e)} "); return
+        st.error(f"Error: {e}"); return
 
     prices = df['Close']
-    curr_price = float(prices.iloc[-1])
-    vol_series = SignalProcessor.get_regime_volatility(prices)
-    curr_vol = float(vol_series.iloc[-1])
-    sma_200 = prices.rolling(200).mean()
-    curr_sma = float(sma_200.iloc[-1])
+    current_price = float(prices.iloc[-1])
+    vol_regime = IndicatorBuilder.calculate_volatility_regime(prices)
+    current_vol = float(vol_regime.iloc[-1])
+    sma_200 = IndicatorBuilder.calculate_sma(prices, 200)
     
-    prob = RiskEngine.get_black_scholes_probability(curr_price, 0.045, curr_vol, 30, ticker)
-    kelly = RiskEngine.calculate_kelly_criterion(prob)
+    bs_prob = MathEngine.black_scholes_tail_adjusted(current_price, 0.045, current_vol, 30, ticker)
+    kelly_suggestion = MathEngine.calculate_kelly(bs_prob)
 
-    # Metrics Layout
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Current Price", f"${curr_price:.2f}")
-    m2.metric("Probability", f"{prob*100:.1f}%")
-    m3.metric("Regime Volatility", f"{curr_vol*100:.1f}%")
-    m4.metric("Kelly Allocation", f"{kelly*100:.1f}%")
+    m1.metric("Price", f"${current_price:.2f}")
+    m2.metric("Probability", f"{bs_prob*100:.1f}%")
+    m3.metric("Regime Vol.", f"{current_vol*100:.1f}%")
+    m4.metric("Kelly Allocation", f"{kelly_suggestion*100:.1f}%")
 
-    # Charting
-    fig, ax = plt.subplots(figsize=(14, 5))
-    ax.plot(df.index, prices, label='Price', color='#58a6ff', linewidth=2)
-    ax.plot(df.index, sma_200, label='200-SMA (Trend)', color='#ff7b72', linestyle='--')
-    ax.set_facecolor('#0d1117'); fig.patch.set_facecolor('#0d1117')
-    ax.tick_params(colors='white'); ax.legend(); ax.grid(alpha=0.1)
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(df.index, prices, color='#58a6ff', label='Price')
+    ax.plot(df.index, sma_200, color='orange', linestyle='--', label='200-SMA')
+    ax.set_facecolor('#0e1117')
+    fig.patch.set_facecolor('#0e1117')
+    ax.tick_params(colors='white')
+    ax.legend()
     st.pyplot(fig)
 
-    # DETAILED ANALYSIS EXPLANATION
-    st.markdown("---")
-    st.subheader("STRATEGIC ANALYSIS AND VERDICT")
-    
-    uptrend = curr_price > curr_sma
-    
-    st.write("**Analysis Overview:**")
-    
-    if curr_vol > 0.30:
-        st.write(f"**Volatility Regime:** Current volatility is elevated ({curr_vol*100:.1f}%). This indicates a high-noise environment where standard price targets are less reliable due to increased market variance.")
+    is_uptrend = current_price > sma_200.iloc[-1]
+    if bs_prob > 0.55 and is_uptrend:
+        st.success(f"**CONVERGENCE:** Mathematical conviction ({bs_prob*100:.1f}%) aligns with structural trend.")
+    elif bs_prob < 0.40:
+        st.warning(f"**CAUTION:** Probabilistic model indicates low statistical edge.")
     else:
-        st.write(f"**Volatility Regime:** Market volatility is currently stable. The mathematical model indicates a normalized distribution of price paths with higher predictive reliability.")
+        st.info("**NEUTRAL:** Wait for trend confirmation or volatility contraction.")
 
-    if uptrend:
-        st.write(f"**Market Structure:** The asset maintains a position above the 200-day Moving Average. This structural alignment suggests institutional support and a positive long-term momentum bias.")
-    else:
-        st.write(f"**Market Structure:** The asset is trading below the 200-day SMA. Historically, this indicates structural weakness and potential resistance from institutional sellers.")
-
-    if prob > 0.50:
-        st.write(f"**Statistical Conviction:** A probability of {prob*100:.1f}% indicates that the target move is mathematically viable within the current timeframe, accounting for fat-tail risks. The Kelly Criterion suggests a {kelly*100:.1f}% allocation to optimize the risk-reward ratio.")
-    else:
-        st.write(f"**Statistical Conviction:** The probability ({prob*100:.1f}%) is insufficient to establish a statistical edge. The model suggests zero or minimal capital allocation to preserve liquidity.")
-
-    st.markdown(" ")
-    if prob > 0.55 and uptrend:
-        st.success("VERDICT: CONVERGENCE. Mathematical conviction and market structure are aligned for a high-probability setup.")
-    elif not uptrend:
-        st.error("VERDICT: STRUCTURAL RISK. Market structure is bearish. Quantitative signals are invalidated by trend resistance.")
-    else:
-        st.info("VERDICT: NEUTRAL. Statistical conviction is insufficient for high-conviction deployment.")
-
-# MAIN INTERFACE
+# SECTION 5: MAIN INTERFACE (Relocated to Main Page)
 def main():
-    st.sidebar.title("QUANT TERMINAL")
-    st.sidebar.caption("v4.2 | Public Risk Management")
-    st.sidebar.markdown("---")
-    
-    mode = st.sidebar.selectbox("Market Source:", ["STOCK DATABASE", "GLOBAL INDICES", "MANUAL SEARCH"])
-    
-    selected_ticker = None
-    if mode == "STOCK DATABASE":
-        sector = st.sidebar.selectbox("Sector:", list(STOCKS_DB.keys()))
-        selected_ticker = st.sidebar.selectbox("Asset:", STOCKS_DB[sector])
-    elif mode == "GLOBAL INDICES":
-        region = st.sidebar.selectbox("Region/Category:", list(INDICES_DB.keys()))
-        selected_ticker = st.sidebar.selectbox("Asset:", list(INDICES_DB[region].keys()))
-    else:
-        selected_ticker = st.sidebar.text_input("Enter Ticker:").upper()
+    st.title("📊 Quantitative Risk Engine v4.2")
+    st.markdown("Select an asset to initiate advanced probabilistic analysis.")
 
-    st.sidebar.markdown(" ")
-    if st.sidebar.button("INITIATE RISK ANALYSIS"):
-        if selected_ticker: execute_terminal_analysis(selected_ticker)
+    # Main Control Panel
+    with st.container():
+        st.markdown('<div class="main-control">', unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            mode = st.selectbox("Select Mode:", ["STOCKS", "INDICES", "SEARCH"])
+        
+        selected_ticker = None
+        
+        with col2:
+            if mode == "STOCKS":
+                cat = st.selectbox("Sector:", list(STOCKS_DB.keys()))
+                selected_ticker = st.selectbox("Asset:", STOCKS_DB[cat])
+            elif mode == "INDICES":
+                cat = st.selectbox("Market:", list(INDICES_DB.keys()))
+                choice = st.selectbox("Index:", list(INDICES_DB[cat].keys()))
+                selected_ticker = choice
+            else:
+                selected_ticker = st.text_input("Enter Ticker (e.g., TSLA):").upper()
 
-    st.sidebar.markdown("---")
+        with col3:
+            st.markdown("<br>", unsafe_allow_html=True) # Spacer
+            run_btn = st.button("INITIATE ANALYSIS", type="primary")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if run_btn and selected_ticker:
+        run_analysis(selected_ticker)
+
+    # Sidebar remains for documentation only
     st.sidebar.subheader("SYSTEM ARCHITECTURE")
     st.sidebar.info("""
-    - Model: Black-Scholes + Student's t (df=5).
-    - Volatility: DVR (Dynamic Volatility Regime).
-    - Allocation: Fractional Kelly Criterion.
+    - **Logic:** BS-Model + Student's t-adjustment.
+    - **Volatility:** Regime-weighted realized vol.
+    - **Risk:** Fractional Kelly allocation.
+    - **Structure:** 200-day SMA trend filtering.
     """)
 
 if __name__ == "__main__":
