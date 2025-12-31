@@ -3,85 +3,62 @@ import pandas as pd
 import yfinance as yf
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-import sys
 import math
+import streamlit as st
 
+# CONFIGURATION & PAGE SETUP
+st.set_page_config(page_title="Risk Management System", page_icon="📈", layout="wide")
 
-# MASTER ASSET DATABASE (CATEGORIZED)
+# Custom CSS for Ominous/Analytic vibe
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; color: #c9d1d9; }
+    .stButton>button { background-color: #262730; border: 1px solid #4e535e; color: white; }
+    h1, h2, h3 { color: #58a6ff; font-family: 'Courier New', monospace; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# SECTION 1: MASTER ASSET DATABASE
 INDICES_DB = {
-    'US MARKETS': {
-        '^GSPC': 'S&P 500 (US Large Cap)',
-        '^IXIC': 'NASDAQ 100 (Tech)',
-        '^DJI': 'Dow Jones Industrial',
-        '^RUT': 'Russell 2000 (Small Cap)'
+    "🇺🇸 US MARKETS": {
+        "^GSPC": "S&P 500 (US Large Cap)",
+        "^IXIC": "NASDAQ 100 (Tech)",
+        "^DJI": "Dow Jones Industrial",
+        "^RUT": "Russell 2000 (Small Cap)"
     },
-    'SHARIA & ETHICAL': {
-        'SPUS': 'S&P 500 Sharia (US)',
-        'HLAL': 'Wahed FTSE USA Sharia',
-        'SPSK': 'SP Funds Global Sukuk',
-        'UMMA': 'Wahed Dow Jones Islamic'
+    "🕌 SHARIA COMPLIANT": {
+        "SPUS": "S&P 500 Sharia (SP Funds)",
+        "HLAL": "Wahed FTSE USA Sharia"
     },
-    'EUROPE': {
-        '^STOXX50E': 'Euro Stoxx 50 (Europe)',
-        '^FTSE': 'FTSE 100 (UK)',
-        '^GDAXI': 'DAX 40 (Germany)',
-        '^FCHI': 'CAC 40 (France)',
-        '^OMX': 'OMX Stockholm 30',
-        '^OMXC25': 'OMX Copenhagen 25'
-    },
-    'ASIA & EMERGING': {
-        '^N225': 'Nikkei 225 (Japan)',
-        '^HSI': 'Hang Seng (Hong Kong)',
-        '^BSESN': 'BSE SENSEX (India)',
-        '000001.SS': 'Shanghai Composite'
+    "🌍 GLOBAL INDICES": {
+        "^STOXX50E": "Euro Stoxx 50 (Europe)",
+        "^GDAXI": "DAX 40 (Germany)",
+        "^FTSE": "FTSE 100 (UK)",
+        "^OMX": "OMX Stockholm 30",
+        "^N225": "Nikkei 225 (Japan)",
+        "000001.SS": "Shanghai Composite (China)"
     }
 }
-
 
 STOCKS_DB = {
-    'MAGNIFICENT 7 (TECH)': {
-        'NVDA': 'NVIDIA Corp',
-        'AAPL': 'Apple Inc',
-        'MSFT': 'Microsoft Corp',
-        'GOOGL': 'Alphabet (Google)',
-        'AMZN': 'Amazon.com',
-        'TSLA': 'Tesla Inc',
-        'META': 'Meta Platforms'
-    },
-    'NORDIC GIANTS': {
-        'VOLV-B.ST': 'Volvo Group',
-        'ERIC-B.ST': 'Ericsson',
-        'AZN.ST': 'AstraZeneca',
-        'HM-B.ST': 'Hennes & Mauritz',
-        'INVE-B.ST': 'Investor AB',
-        'EQNR.OL': 'Equinor (Norway)',
-        'NOVO-B.CO': 'Novo Nordisk (Denmark)'
-    },
-    'FINANCE & BANKING': {
-        'JPM': 'JPMorgan Chase',
-        'V': 'Visa Inc',
-        'MA': 'Mastercard',
-        'BAC': 'Bank of America',
-        'SEB-A.ST': 'SEB Bank'
-    }
+    "MAGNIFICENT 7 (TECH)": ["NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META"],
+    "NORDIC GIANTS": ["VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "HM-B.ST", "INVE-B.ST", "EQNR.OL", "NOVO-B.CO", "SAND.ST", "ATCO-A.ST", "TELIA.ST"],
+    "US FINANCE & BANKING": ["JPM", "BAC", "V", "MA", "GS", "MS", "WFC", "BLK"],
+    "GLOBAL CONSUMER": ["KO", "PEP", "MCD", "NKE", "SBUX", "WMT", "COST", "PG"],
+    "PHARMA & HEALTH": ["LLY", "JNJ", "PFE", "MRK", "ABBV", "UNH"],
+    "ENERGY & COMMODITIES": ["XOM", "CVX", "SHEL", "BP", "RIO", "VALE"]
 }
 
-# MATH ENGINE & INDICATORS Black-Scholes Model
+# Flatten stocks for easier searching
+ALL_STOCKS = {}
+for category, tickers in STOCKS_DB.items():
+    for ticker in tickers:
+        ALL_STOCKS[f"{ticker} - {category}"] = ticker
+
+# SECTION 2: MATH & LOGIC ENGINE
 class MathEngine:
     @staticmethod
-    def calculate_mean(data):
-        return sum(data) / len(data) if len(data) > 0 else 0
-
-    @staticmethod
-    def calculate_std_dev(data):
-        if len(data) < 2: return 0
-        mean = MathEngine.calculate_mean(data)
-        variance = sum((x - mean) ** 2 for x in data) / (len(data) - 1)
-        return math.sqrt(variance)
-
-    @staticmethod
     def black_scholes_probability(S, r, sigma, t):
-        # S=Price, r=Risk-free rate, sigma=Volatility, t=Time
         if t <= 0 or sigma == 0: return 0.0
         K = S * (1 + (r * t)) 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
@@ -90,7 +67,7 @@ class MathEngine:
 class IndicatorBuilder:
     @staticmethod
     def calculate_sma(prices, period):
-        return pd.Series(prices).rolling(window=period).mean().tolist()
+        return pd.Series(prices).rolling(window=period).mean()
 
     @staticmethod
     def calculate_rsi(prices, period=14):
@@ -98,99 +75,120 @@ class IndicatorBuilder:
         gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
         rs = gain / loss
-        return (100 - (100 / (1 + rs))).tolist()
+        return 100 - (100 / (1 + rs))
 
     @staticmethod
-    def calculate_volatility(prices, window):
+    def calculate_volatility(prices, window=30):
         log_ret = np.log(pd.Series(prices) / pd.Series(prices).shift(1))
-        return (log_ret.rolling(window=window).std() * np.sqrt(252)).tolist()
+        return log_ret.rolling(window=window).std() * np.sqrt(252)
+
+# SECTION 3: TRADING SYSTEM (STREAMLIT ADAPTED)
+def run_analysis(ticker):
+    st.write(f"### 📡 ANALYZING ASSET: {ticker}")
     
+    # 1. Fetch Data
+    try:
+        df = yf.download(ticker, period="2y", progress=False, multi_level_index=False)
+        if len(df) < 200:
+            st.error("Not enough data to analyze.")
+            return
+    except Exception as e:
+        st.error(f"Connection failed: {e}")
+        return
 
-# Trading System 
-# ==============================================================================
-# SECTION 3: TRADING SYSTEM
-# ==============================================================================
+    prices = df['Close']
+    
+    # 2. Calculate Indicators
+    sma_50 = IndicatorBuilder.calculate_sma(prices, 50)
+    sma_200 = IndicatorBuilder.calculate_sma(prices, 200)
+    rsi = IndicatorBuilder.calculate_rsi(prices, 14)
+    volatility = IndicatorBuilder.calculate_volatility(prices, 30)
+    
+    # 3. Get Latest Metrics
+    current_price = prices.iloc[-1]
+    current_vol = volatility.iloc[-1]
+    current_rsi = rsi.iloc[-1]
+    bs_prob = MathEngine.black_scholes_probability(current_price, 0.045, current_vol, 30/365)
 
-class TradingSystem:
-    def __init__(self, ticker):
-        self.ticker = ticker
-        self.r = 0.045 # Risk-free rate (approx 4.5%)
+    # 4. Display Metrics Dashboard
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Price", f"${current_price:.2f}")
+    col2.metric("RSI (14)", f"{current_rsi:.1f}")
+    col3.metric("Volatility", f"{current_vol*100:.1f}%")
+    col4.metric("BS Probability", f"{bs_prob*100:.1f}%", help="Probability of profit in 30 days")
+
+    # 5. Plotting
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(df.index, prices, label='Price', color='white', alpha=0.6)
+    ax.plot(df.index, sma_50, label='SMA 50', color='cyan', alpha=0.8)
+    ax.plot(df.index, sma_200, label='SMA 200', color='orange', alpha=0.8)
+    
+    # Buy Signals
+    buy_signals = (prices > sma_200) & (rsi < 40)
+    ax.scatter(df.index[buy_signals], prices[buy_signals], marker='^', color='#00ff00', s=100, label='Buy Signal', zorder=5)
+
+    ax.set_facecolor('#0e1117')
+    fig.patch.set_facecolor('#0e1117')
+    ax.tick_params(colors='white')
+    for spine in ax.spines.values(): spine.set_color('#4e535e')
+    ax.legend()
+    st.pyplot(fig)
+
+    # 6. Analyst Verdict
+    st.subheader("🤖 SYSTEM VERDICT")
+    if current_price > sma_200.iloc[-1]:
+        trend = "BULLISH (Uptrend)"
+        color = "green"
+    else:
+        trend = "BEARISH (Downtrend)"
+        color = "red"
         
-    def fetch_data(self):
-        print(f"\n[SYSTEM] Connecting to Exchange API for {self.ticker}...")
-        try:
-            return yf.download(self.ticker, period="3y", progress=False, multi_level_index=False)
-        except: return None
+    st.markdown(f"**Trend:** :{color}[{trend}]")
+    st.markdown(f"**RSI Status:** {'Overbought' if current_rsi > 70 else 'Oversold' if current_rsi < 30 else 'Neutral'}")
+    
+    if bs_prob > 0.55:
+        st.success(f"**OPPORTUNITY:** High mathematical probability ({bs_prob*100:.1f}%) of upside.")
+    else:
+        st.warning("**CAUTION:** Mathematical probability is low. Stay Liquid.")
 
-    def analyze(self, df, capital):
-        prices = df['Close'].tolist()
-        dates = df.index.tolist()
-        sma_50 = IndicatorBuilder.calculate_sma(prices, 50)
-        sma_200 = IndicatorBuilder.calculate_sma(prices, 200)
-        rsi = IndicatorBuilder.calculate_rsi(prices, 14)
-        hist_vol = IndicatorBuilder.calculate_volatility(prices, 30)
+# MAIN APP INTERFACE
+def main():
+    st.sidebar.title("ACCESS TERMINAL")
+    st.sidebar.markdown("---")
+    
+    # MODE SELECTION
+    mode = st.sidebar.radio("Select Data Source:", ["📈 TOP 100 STOCKS", "🌍 GLOBAL INDICES", "🔍 MANUAL SEARCH"])
+    
+    selected_ticker = None
+
+    if mode == "📈 TOP 100 STOCKS":
+        st.header("Major Equities Database")
+        category = st.selectbox("Select Sector:", list(STOCKS_DB.keys()))
+        ticker_key = st.selectbox("Select Asset:", STOCKS_DB[category])
+        selected_ticker = ticker_key
+
+    elif mode == "🌍 GLOBAL INDICES":
+        st.header("Global Market Indices")
+        all_indices = {}
+        for cat, data in INDICES_DB.items():
+            for t, n in data.items():
+                all_indices[f"{n} ({t})"] = t
         
-        position = None
-        curr_cap = capital
-        buys, sells = [], []
+        choice = st.selectbox("Select Index:", list(all_indices.keys()))
+        selected_ticker = all_indices[choice]
 
-        print("[SYSTEM] Executing Fortress Logic...")
-        for i in range(200, len(prices)):
-            price = prices[i]
-            date = dates[i]
-            vol = hist_vol[i]
-            # Black-Scholes Probability
-            prob = MathEngine.black_scholes_probability(price, self.r, vol, 30/365)
-            
-            if position is None:
-                # BUY LOGIC: Trend + Probability + Value
-                if price > sma_200[i] and price > sma_50[i] and prob > 0.51 and rsi[i] < 70:
-                    position = {'price': price, 'shares': curr_cap / price}
-                    buys.append((date, price))
-                    print(f"   [BUY]  {date.date()} | ${price:.2f} | Prob: {prob:.2f}")
-            else:
-                # SELL LOGIC: Stop Loss or Overbought
-                stop = position['price'] * 0.95 
-                if price < stop or rsi[i] > 80:
-                    val = position['shares'] * price
-                    curr_cap = val
-                    sells.append((date, price))
-                    print(f"   [SELL] {date.date()} | ${price:.2f} | Balance: ${curr_cap:.0f}")
-                    position = None
+    elif mode == "🔍 MANUAL SEARCH":
+        st.header("Manual Ticker Entry")
+        user_input = st.text_input("Enter Ticker (e.g., TSLA, BTC-USD, GLD):").upper()
+        if user_input:
+            selected_ticker = user_input
 
-        return curr_cap, df.iloc[200:], buys, sells
-
-    def plot(self, df, buys, sells):
-        plt.figure(figsize=(12, 6))
-        plt.plot(df.index, df['Close'], label='Price', alpha=0.5)
-        if buys: plt.scatter(*zip(*buys), marker='^', color='green', s=100, label='Buy')
-        if sells: plt.scatter(*zip(*sells), marker='v', color='red', s=100, label='Sell')
-        plt.title(f"Analysis: {self.ticker}")
-        plt.show()
-
-# ==============================================================================
-# MAIN MENU
-# ==============================================================================
+    # RUN BUTTON
+    if st.sidebar.button("INITIATE ANALYSIS", type="primary"):
+        if selected_ticker:
+            run_analysis(selected_ticker)
+        else:
+            st.error("Please select a valid ticker.")
 
 if __name__ == "__main__":
-    print("\n=== RISK MANAGEMENT SYSTEM v4.0 ===")
-    print("1. US INDICES (SP500, NASDAQ)")
-    print("2. TECH GIANTS (NVDA, APPLE)")
-    print("3. SEARCH MANUALLY")
-    
-    c = input("Select Option: ")
-    ticker = None
-    
-    if c == '1': ticker = '^GSPC' # S&P 500
-    elif c == '2': ticker = 'NVDA'
-    elif c == '3': ticker = input("Enter Ticker (e.g., TSLA): ").upper()
-    
-    if ticker:
-        sys = TradingSystem(ticker)
-        data = sys.fetch_data()
-        if data is not None and len(data) > 200:
-            final_cap, _, _, _ = sys.analyze(data, 10000)
-            print(f"\n[RESULT] Final Balance: ${final_cap:.2f}")
-            sys.plot(data.iloc[200:], [], [])
-        else:
-            print("[ERROR] Could not fetch data.")
+    main()
