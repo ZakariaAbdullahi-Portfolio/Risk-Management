@@ -21,13 +21,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# SECTION 1: MACRO EVENT DATABASE (2026)
+# SECTION 1: MACRO EVENT DATABASE
 MACRO_EVENTS = [
     {"date": "2026-01-14", "label": "US CPI (Inflation Data)"},
     {"date": "2026-01-28", "label": "FOMC Interest Rate Decision"},
     {"date": "2026-02-11", "label": "US CPI (Inflation Data)"},
     {"date": "2026-03-18", "label": "FOMC Interest Rate Decision"},
-    {"date": "2026-02-10", "label": "Riksbanken Räntebesked"}
+    {"date": "2026-02-10", "label": "Riksbanken Rate Decision"}
 ]
 
 # SECTION 2: MASTER ASSET DATABASE
@@ -59,17 +59,17 @@ class MathEngine:
     def calculate_kelly(prob, win_loss_ratio=1.5):
         q = 1 - prob
         k = (prob * win_loss_ratio - q) / win_loss_ratio
-        return max(0, k * 0.25) # Fractional Kelly (25% av full storlek)
+        return max(0, k * 0.25) # Fractional Kelly (25% of full size)
 
     @staticmethod
     def black_scholes_tail_adjusted(S, r, sigma, days, ticker):
         T = days / 365
         if T <= 0 or sigma <= 0: return 0.0
-        # SAKLIG KALIBRERING: 1.5% för index, 3.0% för enskilda aktier
+        # OBJECTIVE CALIBRATION: 1.5% for indices, 3.0% for individual stocks
         target_move = 1.015 if (ticker.startswith("^") or ticker in ["SPUS"]) else 1.030
         K = S * target_move 
         d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-        return t.cdf(d1, df=5) # Student's t-distribution för Fat-Tails
+        return t.cdf(d1, df=5) # Student's t-distribution for Fat-Tails
 
 class IndicatorBuilder:
     @staticmethod
@@ -89,19 +89,46 @@ def check_macro_proximity():
             active_events.append(f"{event['label']} in {diff} days")
     return active_events
 
-# SECTION 5: ANALYSIS EXECUTION
+# SECTION 5: DATA FETCHING LAYER
+@st.cache_data(ttl=3600, show_spinner="Fetching market data...") 
+def fetch_market_data(ticker):
+    """
+    Fetches historical data in isolation.
+    Forces cache update after 1 hour to prevent stale data.
+    """
+    try:
+        # Enforce timeout to prevent infinite hanging
+        df = yf.download(ticker, period="2y", progress=False, timeout=10)
+        
+        # Handle MultiIndex returned by newer yfinance versions
+        if isinstance(df.columns, pd.MultiIndex):
+            prices = df['Close'][ticker]
+        else:
+            prices = df['Close']
+            
+        return prices.dropna()
+    except Exception as e:
+        st.error(f"Network error during fetch for {ticker}: {e}")
+        return None
+
+# SECTION 6: ANALYSIS EXECUTION
 def run_analysis(ticker):
     st.markdown("---")
     macro_risks = check_macro_proximity()
     
     if macro_risks:
         for risk in macro_risks:
-            st.markdown(f'<div class="macro-alert">⚠️ MACRO OVERLAY ACTIVE: {risk}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="macro-alert">MACRO OVERLAY ACTIVE: {risk}</div>', unsafe_allow_html=True)
         st.write("*System conviction automatically adjusted due to exogenous event risk.*")
 
+    # Fetch cached data
+    prices = fetch_market_data(ticker)
+    
+    if prices is None or prices.empty:
+        st.error("Failed to retrieve valid price data. Aborting analysis.")
+        return
+
     try:
-        df = yf.download(ticker, period="2y", progress=False, multi_level_index=False)
-        prices = df['Close']
         current_price = float(prices.iloc[-1])
         vol_regime = IndicatorBuilder.calculate_volatility_regime(prices)
         current_vol = float(vol_regime.iloc[-1])
@@ -119,8 +146,8 @@ def run_analysis(ticker):
 
         # Visualization
         fig, ax = plt.subplots(figsize=(12, 4))
-        ax.plot(df.index, prices, color='#58a6ff', label='Price', linewidth=1.5)
-        ax.plot(df.index, prices.rolling(200).mean(), color='orange', linestyle='--', label='200-day SMA')
+        ax.plot(prices.index, prices, color='#58a6ff', label='Price', linewidth=1.5)
+        ax.plot(prices.index, prices.rolling(200).mean(), color='orange', linestyle='--', label='200-day SMA')
         ax.set_facecolor('#0e1117')
         fig.patch.set_facecolor('#0e1117')
         ax.tick_params(colors='white')
@@ -145,11 +172,11 @@ def run_analysis(ticker):
             st.write("*The asset is in a 'Mean Reversion' or 'Indecision' phase. While probabilistic modeling indicates moderate potential, the lack of a confirmed structural trend suggests waiting for a cleaner breakout signal.*")
 
     except Exception as e:
-        st.error(f"Analysis failed: {e}")
+        st.error(f"Calculation error during analysis: {e}")
 
-# SECTION 6: MAIN INTERFACE
+# SECTION 7: MAIN INTERFACE
 def main():
-    st.title("📊 Quantitative Risk Engine v4.5")
+    st.title("Quantitative Risk Engine v4.5")
     st.markdown("Advanced probabilistic analysis and risk management.")
 
     with st.container():
